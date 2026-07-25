@@ -175,8 +175,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func aboutAction() {
         let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.7"
-        let build = info?["CFBundleVersion"] as? String ?? "19"
+        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.8"
+        let build = info?["CFBundleVersion"] as? String ?? "20"
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.icon = NSApp.applicationIconImage
@@ -297,16 +297,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func applyWindowPolish(to window: NSWindow) {
         roundWindowContent(for: window)
-        positionTrafficLights(for: window)
+        positionTrafficLightsHorizontally(for: window)
         DispatchQueue.main.async { [weak window] in
             guard let window else { return }
             self.roundWindowContent(for: window)
-            self.positionTrafficLights(for: window)
+            self.positionTrafficLightsHorizontally(for: window)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak window] in
             guard let window else { return }
             self.roundWindowContent(for: window)
-            self.positionTrafficLights(for: window)
+            self.positionTrafficLightsHorizontally(for: window)
         }
     }
 
@@ -320,23 +320,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func positionTrafficLights(for window: NSWindow) {
+    private func positionTrafficLightsHorizontally(for window: NSWindow) {
         guard let closeButton = window.standardWindowButton(.closeButton),
               let minimizeButton = window.standardWindowButton(.miniaturizeButton),
               let zoomButton = window.standardWindowButton(.zoomButton) else { return }
 
-        let originalCloseX = closeButton.frame.origin.x
-        let originalY = closeButton.frame.origin.y
+        let closeX = closeButton.frame.origin.x
         let xOffsets = [
-            closeButton.frame.origin.x - originalCloseX,
-            minimizeButton.frame.origin.x - originalCloseX,
-            zoomButton.frame.origin.x - originalCloseX
+            closeButton.frame.origin.x - closeX,
+            minimizeButton.frame.origin.x - closeX,
+            zoomButton.frame.origin.x - closeX
         ]
         let buttons = [closeButton, minimizeButton, zoomButton]
-        let targetCloseX: CGFloat = 28
-        let targetY = max(6, originalY - 8)
+        let targetCloseX: CGFloat = 24
+
         for (index, button) in buttons.enumerated() {
-            button.setFrameOrigin(NSPoint(x: targetCloseX + xOffsets[index], y: targetY))
+            button.setFrameOrigin(
+                NSPoint(
+                    x: targetCloseX + xOffsets[index],
+                    y: button.frame.origin.y
+                )
+            )
         }
     }
 
@@ -5119,7 +5123,14 @@ struct ActionListView: View {
                         }
                     } label: {
                         Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(state.accentColor)
+                            .frame(width: 28, height: 24)
                     }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .accessibilityLabel(state.language == .ru ? "Добавить действие" : "Add action")
                     Button { state.showingActionEditor = true } label: { Image(systemName: "pencil") }
                         .disabled(state.selectedActionID == nil)
                     Button { state.deleteSelectedAction() } label: { Image(systemName: "trash") }
@@ -5497,7 +5508,12 @@ struct SwipeSensitivityControl: View {
                     .foregroundStyle(state.accentColor)
             }
 
-            Slider(value: $state.swipeSensitivity, in: 0.4...2.0, step: 0.05)
+            AccentSensitivitySlider(
+                value: $state.swipeSensitivity,
+                range: 0.4...2.0,
+                step: 0.05,
+                accent: state.accentColor
+            )
 
             HStack {
                 Text(state.language == .ru ? "Точнее" : "Precise")
@@ -5537,8 +5553,12 @@ struct CompactSwipeSensitivityControl: View {
                     .foregroundStyle(state.accentColor)
             }
 
-            Slider(value: $state.swipeSensitivity, in: 0.4...2.0, step: 0.05)
-                .controlSize(.small)
+            AccentSensitivitySlider(
+                value: $state.swipeSensitivity,
+                range: 0.4...2.0,
+                step: 0.05,
+                accent: state.accentColor
+            )
 
             HStack {
                 Text(state.language == .ru ? "Точнее" : "Precise")
@@ -5571,8 +5591,12 @@ struct CompactTapSensitivityControl: View {
                     .foregroundStyle(state.accentColor)
             }
 
-            Slider(value: $state.tapSensitivity, in: 0.4...2.0, step: 0.05)
-                .controlSize(.small)
+            AccentSensitivitySlider(
+                value: $state.tapSensitivity,
+                range: 0.4...2.0,
+                step: 0.05,
+                accent: state.accentColor
+            )
 
             HStack {
                 Text(state.language == .ru ? "Точнее" : "Precise")
@@ -5605,8 +5629,12 @@ struct CompactTipTapSensitivityControl: View {
                     .foregroundStyle(state.accentColor)
             }
 
-            Slider(value: $state.tipTapSensitivity, in: 0.4...2.0, step: 0.05)
-                .controlSize(.small)
+            AccentSensitivitySlider(
+                value: $state.tipTapSensitivity,
+                range: 0.4...2.0,
+                step: 0.05,
+                accent: state.accentColor
+            )
 
             HStack {
                 Text(state.language == .ru ? "Точнее" : "Precise")
@@ -5618,6 +5646,81 @@ struct CompactTipTapSensitivityControl: View {
         }
         .padding(10)
         .settingsCard(cornerRadius: 12)
+    }
+}
+
+struct AccentSensitivitySlider: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let accent: Color
+
+    private let thumbDiameter: CGFloat = 15
+
+    private var progress: Double {
+        let span = range.upperBound - range.lowerBound
+        guard span > 0 else { return 0 }
+        return min(max((value - range.lowerBound) / span, 0), 1)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let travel = max(proxy.size.width - thumbDiameter, 1)
+            let thumbOffset = travel * progress
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.20))
+                    .frame(height: 4)
+                    .padding(.horizontal, thumbDiameter / 2)
+
+                Capsule()
+                    .fill(accent)
+                    .frame(width: max(thumbOffset, 1), height: 4)
+                    .offset(x: thumbDiameter / 2)
+
+                Circle()
+                    .fill(accent)
+                    .frame(width: thumbDiameter, height: thumbDiameter)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.72), lineWidth: 1)
+                    )
+                    .shadow(color: accent.opacity(0.34), radius: 3, x: 0, y: 1)
+                    .offset(x: thumbOffset)
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gesture in
+                        setValue(for: gesture.location.x, availableWidth: proxy.size.width)
+                    }
+            )
+        }
+        .frame(height: 18)
+        .accessibilityElement()
+        .accessibilityLabel("Sensitivity")
+        .accessibilityValue("\(Int((value * 100).rounded()))%")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment:
+                value = min(value + step, range.upperBound)
+            case .decrement:
+                value = max(value - step, range.lowerBound)
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    private func setValue(for locationX: CGFloat, availableWidth: CGFloat) {
+        let travel = max(availableWidth - thumbDiameter, 1)
+        let rawProgress = min(max((locationX - thumbDiameter / 2) / travel, 0), 1)
+        let rawValue = range.lowerBound + Double(rawProgress) * (range.upperBound - range.lowerBound)
+        let steppedValue = range.lowerBound
+            + ((rawValue - range.lowerBound) / step).rounded() * step
+        value = min(max(steppedValue, range.lowerBound), range.upperBound)
     }
 }
 
