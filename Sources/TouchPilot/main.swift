@@ -1658,14 +1658,14 @@ final class AppState: ObservableObject {
 
     private let store = PresetStore()
     private lazy var monitor = GestureMonitor { [weak self] gesture, modifier in
-        Task { @MainActor in self?.handle(gesture, modifier: modifier) }
+        Task { @MainActor [weak self] in self?.handle(gesture, modifier: modifier) }
     } onStatus: { [weak self] status, deviceCount in
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
             self?.touchEngineStatus = status
             self?.rawTouchDeviceCount = deviceCount
         }
     } onRawTouch: { [weak self] fingerCount in
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
             self?.lastRawTouchAt = Date()
             self?.rawTouchFingerCount = fingerCount
         }
@@ -6265,7 +6265,7 @@ final class ShortcutRecorder: ObservableObject {
         completion?(shortcut)
     }
 
-    static func prettyString(from value: String) -> String? {
+    nonisolated static func prettyString(from value: String) -> String? {
         let parts = value.lowercased().split(separator: "+").map(String.init)
         guard let key = parts.last, !key.isEmpty else { return nil }
         var display = ""
