@@ -10,9 +10,16 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
+
+      - name: Match the local build environment
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          test "$(uname -m)" = "arm64"
+          xcodebuild -version
+          xcrun --show-sdk-version
 
       - name: Build and test
         run: swift test

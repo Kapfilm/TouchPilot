@@ -175,8 +175,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func aboutAction() {
         let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.9"
-        let build = info?["CFBundleVersion"] as? String ?? "21"
+        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.10"
+        let build = info?["CFBundleVersion"] as? String ?? "22"
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.icon = NSApp.applicationIconImage
@@ -333,16 +333,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         ]
         let buttons = [closeButton, minimizeButton, zoomButton]
         let targetCloseX: CGFloat = 24
-        let targetY: CGFloat = 6
-        let targetSize = NSSize(width: 16, height: 16)
+        let targetY: CGFloat = 4
+        let targetSize = NSSize(width: 18, height: 18)
 
         for (index, button) in buttons.enumerated() {
+            button.controlSize = .large
             button.frame = NSRect(
                 origin: NSPoint(x: targetCloseX + xOffsets[index], y: targetY),
                 size: targetSize
             )
+            button.wantsLayer = true
+            button.layer?.setAffineTransform(CGAffineTransform(scaleX: 1.08, y: 1.08))
             button.needsDisplay = true
         }
+    }
+
+    private func restyleTrafficLights(after notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === self.window else { return }
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
+            self.styleTrafficLights(for: window)
+        }
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        restyleTrafficLights(after: notification)
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        restyleTrafficLights(after: notification)
+    }
+
+    func windowDidChangeBackingProperties(_ notification: Notification) {
+        restyleTrafficLights(after: notification)
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -4783,6 +4806,57 @@ enum TouchPilotStyle {
     }
 }
 
+private struct FooterIconButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    let accent: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(isEnabled ? accent : Color.secondary.opacity(0.28))
+            .frame(width: 40, height: 30)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(
+                        isEnabled
+                            ? accent.opacity(configuration.isPressed ? 0.16 : 0.075)
+                            : Color.secondary.opacity(0.035)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(
+                        isEnabled ? accent.opacity(0.08) : Color.secondary.opacity(0.04),
+                        lineWidth: 1
+                    )
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+    }
+}
+
+private struct FooterMenuLabel: View {
+    let accent: Color
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "plus")
+            Image(systemName: "chevron.down")
+                .font(.system(size: 9, weight: .semibold))
+        }
+        .font(.system(size: 14, weight: .medium))
+        .foregroundStyle(accent)
+        .frame(width: 54, height: 30)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(accent.opacity(0.075))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(accent.opacity(0.08), lineWidth: 1)
+        )
+    }
+}
+
 private struct FinderSidebarMaterial: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
@@ -5036,9 +5110,12 @@ struct RuleListView: View {
                 Button {
                     state.beginCreatingRule()
                 } label: { Image(systemName: "plus") }
+                    .buttonStyle(FooterIconButtonStyle(accent: state.accentColor))
                 Button { state.beginEditingSelectedRule() } label: { Image(systemName: "pencil") }
+                    .buttonStyle(FooterIconButtonStyle(accent: state.accentColor))
                     .disabled(state.selectedRuleID == nil)
                 Button { state.deleteSelectedRule() } label: { Image(systemName: "trash") }
+                    .buttonStyle(FooterIconButtonStyle(accent: state.accentColor))
                     .disabled(state.selectedRuleID == nil)
                 Spacer()
             }
@@ -5152,24 +5229,24 @@ struct ActionListView: View {
                             )
                         }
                     } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(state.accentColor)
-                            .frame(width: 28, height: 24)
+                        FooterMenuLabel(accent: state.accentColor)
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .accessibilityLabel(state.language == .ru ? "Добавить действие" : "Add action")
                     Button { state.showingActionEditor = true } label: { Image(systemName: "pencil") }
+                        .buttonStyle(FooterIconButtonStyle(accent: state.accentColor))
                         .disabled(state.selectedActionID == nil)
                     Button { state.deleteSelectedAction() } label: { Image(systemName: "trash") }
+                        .buttonStyle(FooterIconButtonStyle(accent: state.accentColor))
                         .disabled(state.selectedActionID == nil)
                     Button {
                         state.testSelectedRule()
                     } label: {
                         Image(systemName: "play.circle")
                     }
+                    .buttonStyle(FooterIconButtonStyle(accent: state.accentColor))
                     .disabled(rule.actions.isEmpty)
                     .help(state.language == .ru ? "Безопасно проверить действия" : "Safely test actions")
                     Spacer()
@@ -5178,6 +5255,7 @@ struct ActionListView: View {
                     } label: {
                         Image(systemName: "minus.circle")
                     }
+                    .buttonStyle(FooterIconButtonStyle(accent: state.accentColor))
                     .help(state.language == .ru ? "Свернуть в строку меню" : "Minimize to menu bar")
                 }
                 .padding(10)
