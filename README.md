@@ -1,8 +1,29 @@
-# TouchPilot
+<p align="center">
+  <img src="Resources/AppIcon.png" width="160" height="160" alt="Иконка TouchPilot">
+</p>
 
-Нативное приложение для macOS, которое превращает жесты трекпада в команды, сочетания клавиш и цепочки действий.
+<h1 align="center">TouchPilot</h1>
 
-[Скачать последнюю версию](https://github.com/Kapfilm/TouchPilot/releases/latest) · [Сообщить об ошибке](https://github.com/Kapfilm/TouchPilot/issues)
+<hr>
+
+<p align="center">
+  Нативное приложение для macOS, которое превращает жесты трекпада в команды,<br>
+  сочетания клавиш и цепочки действий.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Kapfilm/TouchPilot/releases/latest"><img src="https://img.shields.io/github/v/release/Kapfilm/TouchPilot?display_name=tag&style=flat-square&label=release&color=8a2be2" alt="Последний релиз"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-1683f3?style=flat-square&logo=apple&logoColor=white" alt="macOS 14 или новее">
+  <img src="https://img.shields.io/badge/Swift-5.9%2B-f05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 5.9 или новее">
+  <img src="https://img.shields.io/badge/Apple_Silicon-arm64-555555?style=flat-square&logo=apple&logoColor=white" alt="Apple Silicon arm64">
+  <a href="https://github.com/Kapfilm/TouchPilot/actions/workflows/release.yml"><img src="https://github.com/Kapfilm/TouchPilot/actions/workflows/release.yml/badge.svg" alt="Сборка релиза"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Kapfilm/TouchPilot/releases/latest">Скачать последнюю версию</a>
+  ·
+  <a href="https://github.com/Kapfilm/TouchPilot/issues/new">Сообщить о проблеме</a>
+</p>
 
 ![Главное окно TouchPilot](docs/screenshots/main-window-light.png)
 
