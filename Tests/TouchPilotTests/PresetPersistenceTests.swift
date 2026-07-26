@@ -345,7 +345,7 @@ final class PresetPersistenceTests: XCTestCase {
         XCTAssertEqual(DrawingGestureRecognizer.circleGesture(in: points), .circleClockwise)
     }
 
-    func testRecognizesLooseThreeQuarterCircle() {
+    func testLooseThreeQuarterArcIsNotRecognizedAsCircle() {
         let points: [(x: Float, y: Float)] = (0...42).map { index in
             let progress = Double(index) / 42
             let angle = progress * 1.56 * Double.pi
@@ -356,7 +356,70 @@ final class PresetPersistenceTests: XCTestCase {
             )
         }
 
-        XCTAssertEqual(DrawingGestureRecognizer.circleGesture(in: points), .circleCounterClockwise)
+        XCTAssertNil(DrawingGestureRecognizer.circleGesture(in: points))
+    }
+
+    func testAccidentalSemicircleWithReturnIsNotRecognizedAsCircle() {
+        var points: [(x: Float, y: Float)] = (0...32).map { index in
+            let progress = Double(index) / 32
+            let angle = progress * Double.pi
+            return (
+                x: Float(0.5 + cos(angle) * 0.18),
+                y: Float(0.5 + sin(angle) * 0.13)
+            )
+        }
+        points.append(contentsOf: (1...18).map { index in
+            let progress = Double(index) / 18
+            return (
+                x: Float(0.32 + progress * 0.36),
+                y: Float(0.5 + sin(progress * Double.pi) * 0.025)
+            )
+        })
+
+        XCTAssertNil(DrawingGestureRecognizer.circleGesture(in: points))
+    }
+
+    func testEdgeSlidesKeepSideAndVerticalDirectionDistinct() {
+        XCTAssertEqual(
+            EdgeSlideGestureRecognizer.gesture(side: .left, startY: 0.25, currentY: 0.45),
+            .leftEdgeSlideUp
+        )
+        XCTAssertEqual(
+            EdgeSlideGestureRecognizer.gesture(side: .left, startY: 0.75, currentY: 0.55),
+            .leftEdgeSlideDown
+        )
+        XCTAssertEqual(
+            EdgeSlideGestureRecognizer.gesture(side: .right, startY: 0.25, currentY: 0.45),
+            .rightEdgeSlideUp
+        )
+        XCTAssertEqual(
+            EdgeSlideGestureRecognizer.gesture(side: .right, startY: 0.75, currentY: 0.55),
+            .rightEdgeSlideDown
+        )
+    }
+
+    func testEdgeSlideIgnoresSmallVerticalJitter() {
+        XCTAssertNil(
+            EdgeSlideGestureRecognizer.gesture(side: .left, startY: 0.50, currentY: 0.57)
+        )
+    }
+
+    func testExpandedTrackpadZonesRemainDistinct() {
+        XCTAssertEqual(
+            TrackpadZoneGestureRecognizer.gesture(for: (x: 0.25, y: 0.75)),
+            .cornerClickTopLeft
+        )
+        XCTAssertEqual(
+            TrackpadZoneGestureRecognizer.gesture(for: (x: 0.75, y: 0.25)),
+            .cornerClickBottomRight
+        )
+        XCTAssertEqual(
+            TrackpadZoneGestureRecognizer.gesture(for: (x: 0.31, y: 0.76)),
+            .middleClickTop
+        )
+        XCTAssertNil(
+            TrackpadZoneGestureRecognizer.gesture(for: (x: 0.29, y: 0.71))
+        )
     }
 
     func testCleaningUnlockRequiresTwoCommandChordsWithFullRelease() {

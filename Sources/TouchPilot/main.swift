@@ -175,8 +175,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func aboutAction() {
         let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.8"
-        let build = info?["CFBundleVersion"] as? String ?? "20"
+        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.9"
+        let build = info?["CFBundleVersion"] as? String ?? "21"
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.icon = NSApp.applicationIconImage
@@ -297,16 +297,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func applyWindowPolish(to window: NSWindow) {
         roundWindowContent(for: window)
-        positionTrafficLightsHorizontally(for: window)
+        styleTrafficLights(for: window)
         DispatchQueue.main.async { [weak window] in
             guard let window else { return }
             self.roundWindowContent(for: window)
-            self.positionTrafficLightsHorizontally(for: window)
+            self.styleTrafficLights(for: window)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak window] in
             guard let window else { return }
             self.roundWindowContent(for: window)
-            self.positionTrafficLightsHorizontally(for: window)
+            self.styleTrafficLights(for: window)
         }
     }
 
@@ -320,7 +320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    private func positionTrafficLightsHorizontally(for window: NSWindow) {
+    private func styleTrafficLights(for window: NSWindow) {
         guard let closeButton = window.standardWindowButton(.closeButton),
               let minimizeButton = window.standardWindowButton(.miniaturizeButton),
               let zoomButton = window.standardWindowButton(.zoomButton) else { return }
@@ -333,14 +333,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         ]
         let buttons = [closeButton, minimizeButton, zoomButton]
         let targetCloseX: CGFloat = 24
+        let targetY: CGFloat = 6
+        let targetSize = NSSize(width: 16, height: 16)
 
         for (index, button) in buttons.enumerated() {
-            button.setFrameOrigin(
-                NSPoint(
-                    x: targetCloseX + xOffsets[index],
-                    y: button.frame.origin.y
-                )
+            button.frame = NSRect(
+                origin: NSPoint(x: targetCloseX + xOffsets[index], y: targetY),
+                size: targetSize
             )
+            button.needsDisplay = true
         }
     }
 
@@ -876,13 +877,13 @@ enum DrawingGestureRecognizer {
             if angle < 0 { angle += 2 * .pi }
             occupiedSectors.insert(min(Int(angle / (2 * .pi) * 8), 7))
         }
-        guard occupiedSectors.count >= 5 else { return nil }
+        guard occupiedSectors.count >= 7 else { return nil }
 
         var pathLength: Float = 0
         for index in 1..<points.count {
             pathLength += hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y)
         }
-        guard pathLength > averageRadius * 3.5,
+        guard pathLength > averageRadius * 4.8,
               pathLength < averageRadius * 15 else { return nil }
 
         var twiceSignedArea: Float = 0
@@ -893,10 +894,10 @@ enum DrawingGestureRecognizer {
         }
         let contourArea = abs(twiceSignedArea) * 0.5
         let boundingArea = width * height
-        guard contourArea / max(boundingArea, 0.0001) > 0.20 else { return nil }
+        guard contourArea / max(boundingArea, 0.0001) > 0.36 else { return nil }
 
         guard let start = points.first, let end = points.last,
-              hypot(start.x - end.x, start.y - end.y) < max(averageRadius * 1.50, 0.095) else { return nil }
+              hypot(start.x - end.x, start.y - end.y) < max(averageRadius * 0.95, 0.075) else { return nil }
 
         var signedSweep: Float = 0
         var absoluteSweep: Float = 0
@@ -913,13 +914,49 @@ enum DrawingGestureRecognizer {
             previousAngle = angle
         }
 
-        guard abs(signedSweep) > .pi * 1.28,
+        guard abs(signedSweep) > .pi * 1.68,
               abs(signedSweep) < .pi * 3.0,
               absoluteSweep > 0,
-              abs(signedSweep) / absoluteSweep > 0.58 else { return nil }
+              abs(signedSweep) / absoluteSweep > 0.72 else { return nil }
 
         // Multitouch coordinates use an upward Y axis, matching the mathematical angle direction.
         return signedSweep < 0 ? .circleClockwise : .circleCounterClockwise
+    }
+}
+
+enum TrackpadEdge {
+    case left
+    case right
+}
+
+enum EdgeSlideGestureRecognizer {
+    static func gesture(
+        side: TrackpadEdge,
+        startY: Float,
+        currentY: Float,
+        minimumTravel: Float = 0.12
+    ) -> GestureKind? {
+        let travel = currentY - startY
+        guard abs(travel) >= minimumTravel else { return nil }
+
+        switch (side, travel > 0) {
+        case (.left, true): return .leftEdgeSlideUp
+        case (.left, false): return .leftEdgeSlideDown
+        case (.right, true): return .rightEdgeSlideUp
+        case (.right, false): return .rightEdgeSlideDown
+        }
+    }
+}
+
+enum TrackpadZoneGestureRecognizer {
+    static func gesture(for position: (x: Float, y: Float)) -> GestureKind? {
+        if position.x < 0.28 && position.y > 0.70 { return .cornerClickTopLeft }
+        if position.x > 0.72 && position.y > 0.70 { return .cornerClickTopRight }
+        if position.x < 0.28 && position.y < 0.30 { return .cornerClickBottomLeft }
+        if position.x > 0.72 && position.y < 0.30 { return .cornerClickBottomRight }
+        if position.x > 0.30 && position.x < 0.70 && position.y > 0.72 { return .middleClickTop }
+        if position.x > 0.30 && position.x < 0.70 && position.y < 0.28 { return .middleClickBottom }
+        return nil
     }
 }
 
@@ -2458,10 +2495,9 @@ final class GestureMonitor: @unchecked Sendable {
     private var circleFired = false
     private var trianglePoints: [(x: Float, y: Float)] = []
     private var triangleFired = false
-    private var edgeSlideLastY: Float?
-    private var edgeSlideSide: EdgeSide?
-
-    private enum EdgeSide { case left, right }
+    private var edgeSlideStartY: Float?
+    private var edgeSlideSide: TrackpadEdge?
+    private var edgeSlideFingerID: Int32?
 
     init(
         callback: @escaping @Sendable (GestureKind, GestureTriggerModifier) -> Void,
@@ -2817,8 +2853,9 @@ final class GestureMonitor: @unchecked Sendable {
             }
             lastSingleFingerPos = nil
             resetDrawingState()
-            edgeSlideLastY = nil
+            edgeSlideStartY = nil
             edgeSlideSide = nil
+            edgeSlideFingerID = nil
         }
 
         detectClickOnPress(fingerCount: currentFingers, pressed: pressed)
@@ -3013,7 +3050,8 @@ final class GestureMonitor: @unchecked Sendable {
             guard peakFingers <= 1,
                   centroidMovement < 0.035,
                   Date().timeIntervalSince(lastMultiFingerTouchAt) > 0.55 else { return }
-            if let pos = lastSingleFingerPos, let gesture = zoneGesture(for: pos) {
+            if let pos = lastSingleFingerPos,
+               let gesture = TrackpadZoneGestureRecognizer.gesture(for: pos) {
                 fire(gesture)
             }
         default:
@@ -3081,16 +3119,6 @@ final class GestureMonitor: @unchecked Sendable {
         pressDragStartCentroid = nil
         pressDragMaximumTravel = 0
         pressDragFired = false
-    }
-
-    private func zoneGesture(for pos: (x: Float, y: Float)) -> GestureKind? {
-        if pos.x < 0.22 && pos.y > 0.74 { return .cornerClickTopLeft }
-        if pos.x > 0.78 && pos.y > 0.74 { return .cornerClickTopRight }
-        if pos.x < 0.22 && pos.y < 0.26 { return .cornerClickBottomLeft }
-        if pos.x > 0.78 && pos.y < 0.26 { return .cornerClickBottomRight }
-        if pos.x > 0.34 && pos.x < 0.66 && pos.y > 0.78 { return .middleClickTop }
-        if pos.x > 0.34 && pos.x < 0.66 && pos.y < 0.22 { return .middleClickBottom }
-        return nil
     }
 
     private func detectTipTap(touches: [(fingerID: Int32, x: Float, y: Float, majorAxis: Float)], previousFingers: Int) {
@@ -3552,33 +3580,35 @@ final class GestureMonitor: @unchecked Sendable {
 
     private func trackEdgeSlide(_ touch: (fingerID: Int32, x: Float, y: Float, majorAxis: Float), pressed: Bool) {
         guard pressed else {
-            edgeSlideLastY = nil
+            edgeSlideStartY = nil
             edgeSlideSide = nil
+            edgeSlideFingerID = nil
             return
         }
-        let side: EdgeSide?
-        if touch.x < 0.14 { side = .left }
-        else if touch.x > 0.86 { side = .right }
+        let side: TrackpadEdge?
+        if touch.x < 0.16 { side = .left }
+        else if touch.x > 0.84 { side = .right }
         else { side = nil }
         guard let side else {
-            edgeSlideLastY = nil
+            edgeSlideStartY = nil
             edgeSlideSide = nil
+            edgeSlideFingerID = nil
             return
         }
-        guard let lastY = edgeSlideLastY, edgeSlideSide == side else {
-            edgeSlideLastY = touch.y
+        guard let startY = edgeSlideStartY,
+              edgeSlideSide == side,
+              edgeSlideFingerID == touch.fingerID else {
+            edgeSlideStartY = touch.y
             edgeSlideSide = side
+            edgeSlideFingerID = touch.fingerID
             return
         }
-        let delta = touch.y - lastY
-        guard abs(delta) > 0.055 else { return }
-        edgeSlideLastY = touch.y
-        switch (side, delta > 0) {
-        case (.left, true): fire(.leftEdgeSlideUp)
-        case (.left, false): fire(.leftEdgeSlideDown)
-        case (.right, true): fire(.rightEdgeSlideUp)
-        case (.right, false): fire(.rightEdgeSlideDown)
-        }
+        guard let gesture = EdgeSlideGestureRecognizer.gesture(
+            side: side,
+            startY: startY,
+            currentY: touch.y
+        ) else { return }
+        fire(gesture)
     }
 
     private func resetDrawingState() {
@@ -6927,7 +6957,7 @@ struct EdgeSlidePreview: View {
             FingerBubble()
                 .offset(x: x, y: animate ? (up ? -50 : 50) : (up ? 50 : -50))
         }
-        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: animate)
+        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: false), value: animate)
     }
 }
 
