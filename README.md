@@ -91,7 +91,7 @@ TouchPilot умеет:
 
 ## Установка
 
-1. Скачайте `TouchPilot-0.6.10.dmg` со страницы [Releases](https://github.com/Kapfilm/TouchPilot/releases).
+1. Скачайте `TouchPilot-0.6.11.dmg` со страницы [Releases](https://github.com/Kapfilm/TouchPilot/releases).
 2. Откройте DMG и перетащите TouchPilot в папку Applications.
 3. Запустите TouchPilot.
 4. Разрешите приложению «Универсальный доступ» в `Системные настройки → Конфиденциальность и безопасность`.
@@ -166,8 +166,8 @@ swift test
 3. Создайте и отправьте тег:
 
 ```bash
-git tag v0.6.10
-git push origin v0.6.10
+git tag v0.6.11
+git push origin v0.6.11
 ```
 
 GitHub Actions запустит тесты, соберёт DMG и прикрепит его к новому GitHub Release.

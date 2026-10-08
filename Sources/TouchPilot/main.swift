@@ -175,8 +175,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func aboutAction() {
         let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.10"
-        let build = info?["CFBundleVersion"] as? String ?? "22"
+        let version = info?["CFBundleShortVersionString"] as? String ?? "0.6.11"
+        let build = info?["CFBundleVersion"] as? String ?? "23"
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.icon = NSApp.applicationIconImage
@@ -331,20 +331,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             minimizeButton.frame.origin.x - closeX,
             zoomButton.frame.origin.x - closeX
         ]
-        let buttons = [closeButton, minimizeButton, zoomButton]
         let targetCloseX: CGFloat = 24
-        let targetY: CGFloat = 4
-        let targetSize = NSSize(width: 18, height: 18)
 
-        for (index, button) in buttons.enumerated() {
-            button.controlSize = .large
-            button.frame = NSRect(
-                origin: NSPoint(x: targetCloseX + xOffsets[index], y: targetY),
-                size: targetSize
+        for (index, button) in [closeButton, minimizeButton, zoomButton].enumerated() {
+            button.setFrameOrigin(
+                NSPoint(x: targetCloseX + xOffsets[index], y: button.frame.origin.y)
             )
-            button.wantsLayer = true
-            button.layer?.setAffineTransform(CGAffineTransform(scaleX: 1.08, y: 1.08))
-            button.needsDisplay = true
         }
     }
 
